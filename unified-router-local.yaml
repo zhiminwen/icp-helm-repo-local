@@ -1,0 +1,55 @@
+kind: Deployment
+apiVersion: extensions/v1beta1
+metadata:
+  labels:
+    k8s-app: unified-router
+  name: unified-router
+  namespace: kube-system
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      k8s-app: unified-router
+  template:
+    metadata:
+      labels:
+        k8s-app: unified-router
+      annotations:
+        scheduler.alpha.kubernetes.io/critical-pod: ''
+    spec:
+      containers:
+      - name: unified-router
+        image: "ibmcom/unified-router:1.2.0"
+        imagePullPolicy: IfNotPresent
+        ports:
+        - containerPort: 9090
+          protocol: TCP
+        args:
+        - /unified-router
+        - --enable-helm-precheck=false
+      - name: helm-repo
+        image: "ibmcom/helm:v2.4.1"
+        imagePullPolicy: IfNotPresent
+        ports:
+        - containerPort: 8879
+          protocol: TCP
+        args:
+        - serve
+        - --repo-path=/local-repo
+        volumeMounts:
+          - name: volume-local-repo
+            mountPath: /local-repo
+      nodeSelector:
+        beta.kubernetes.io/arch: "amd64"
+        role: 'master'
+      tolerations:
+      - key: "dedicated"
+        operator: "Equal"
+        value: "master"
+        effect: "NoSchedule"
+      - key: "CriticalAddonsOnly"
+        operator: "Exists"
+      volumes:
+      - name: volume-local-repo
+        hostPath: 
+          path: /home/ubuntu/icp/local_helm_repo
